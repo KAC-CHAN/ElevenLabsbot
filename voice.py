@@ -1,45 +1,59 @@
-import pyrogram
-from eleven_client import ElevenClient
 
+import requests
+from pyrogram import Client, filters
+from pyrogram.types import Message
+
+# Initialize the Pyrogram client
 api_id = 26788480
 api_hash = "858d65155253af8632221240c535c314"
 bot_token = "6593343536:AAHYW4ehuF535UHAS_KUYVTwBj26hqf8RQ8"
 
-api_key = "aaa8ac11336407eed87a0c569edfb359"
+app = Client("text_to_voice_bot", api_id, api_hash, bot_token=bot_token)
 
-# Initialize Pyrogram client
-client = pyrogram.Client("text2voice", api_id, api_hash, bot_token)
+# API endpoint for the ElevenLabs Text to Speech API
+API_ENDPOINT = "https://api.elevenlabs.io/v1/text-to-speech/adam"
 
-# Initialize Eleven Labs client  
-eleven = ElevenClient(api_key)
+# Command to convert text to voice
+@app.on_message(filters.command("voice"))
+def convert_text_to_voice(_, message: Message):
+    text = " ".join(message.command[1:])
+    if text:
+        # Send a request to the ElevenLabs API
+        response = requests.post(
+            API_ENDPOINT,
+            json={"text": text[:512]},
+            headers={"Authorization": "aaa8ac11336407eed87a0c569edfb359"}
+        )
 
-# Message handler
-@client.on_message()
-async def handler(client, message):
+        if response.status_code == 200:
+            audio_url = response.json().get("audio_url")
 
-  if message.text.startswith("/voice"):
+            if audio_url:
+                # Download the audio file
+                audio_file = f"{message.chat.id}.mp3"
+                with requests.get(audio_url, stream=True) as r:
+                    r.raise_for_status()
+                    with open(audio_file, "wb") as f:
+                        for chunk in r.iter_content(chunk_size=8192):
+                            f.write(chunk)
 
-    # Extract text after command
-    text = message.text.split(" ", 1)[1]
+                # Send the audio file to the user
+                duration = response.json().get("duration", 0)
+                if duration > 60:
+                    message.reply_text("Sorry, the audio exceeds the 1-minute limit.")
+                else:
+                    message.reply_audio(audio_file, duration=duration)
+            else:
+                message.reply_text("Sorry, an error occurred while processing the text.")
+        else:
+            message.reply_text("Sorry, an error occurred while communicating with the API.")
+    else:
+        message.reply_text("Please provide the text to convert.")
 
-    # Limit text length
-    if len(text) > 150: 
-      text = text[:150] + "..."
+    # Remove the audio file
+    if audio_file:
+        os.remove(audio_file)
 
-    # Generate voice 
-    voice = eleven.generateVoice(text, voice="adam")  
 
-    # Trim audio if > 1 min
-    if len(voice) > 60000:
-      voice = voice[:60000]
-
-    # Reply audio to user
-    await client.send_audio(chat_id=message.chat.id, audio=voice)
-
-  else:
-    # Send "Use /voice" if no command
-    await message.reply("Use /voice {text} to convert to speech")
-
-# Run bot
-if __name__ == "__main__":
-  client.run()
+# Run the bot
+app.run()

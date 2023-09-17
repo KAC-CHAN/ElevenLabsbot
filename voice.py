@@ -28,8 +28,11 @@ def convert_text_to_voice(_, message: Message):
         if response.status_code == 200:
             audio_url = response.json().get("audio_url")
 
+            audio_file = None
+            
             if audio_url:
-                # Download the audio file
+                
+                # Download audio
                 audio_file = f"{message.chat.id}.mp3"
                 with requests.get(audio_url, stream=True) as r:
                     r.raise_for_status()

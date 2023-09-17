@@ -14,25 +14,31 @@ client = pyrogram.Client("text2voice", api_id, api_hash, bot_token)
 eleven = ElevenClient(api_key)
 
 # Message handler
-@client.on_message()  
+@client.on_message()
 async def handler(client, message):
 
-  # Get user text
-  text = message.text  
+  if message.text.startswith("/voice"):
 
-  # Limit text length
-  if len(text) > 150:
-    text = text[:150] + "..."
+    # Extract text after command
+    text = message.text.split(" ", 1)[1]
 
-  # Generate voice with Adam voice
-  voice = eleven.generateVoice(text, voice="adam")   
+    # Limit text length
+    if len(text) > 150: 
+      text = text[:150] + "..."
 
-  # Trim if audio > 1 min
-  if len(voice) > 60000:
-    voice = voice[:60000]
+    # Generate voice 
+    voice = eleven.generateVoice(text, voice="adam")  
 
-  # Reply audio to user
-  await client.send_audio(chat_id=message.chat.id, audio=voice)
+    # Trim audio if > 1 min
+    if len(voice) > 60000:
+      voice = voice[:60000]
+
+    # Reply audio to user
+    await client.send_audio(chat_id=message.chat.id, audio=voice)
+
+  else:
+    # Send "Use /voice" if no command
+    await message.reply("Use /voice {text} to convert to speech")
 
 # Run bot
 if __name__ == "__main__":

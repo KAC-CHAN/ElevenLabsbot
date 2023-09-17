@@ -5,4 +5,3 @@ pymongo
 dnspython
 aiohttp
 motor
-paypalrestsdk

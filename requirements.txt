@@ -5,4 +5,4 @@ pymongo
 dnspython
 aiohttp
 motor
-eleven-client
+eleven_client
